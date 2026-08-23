@@ -14,6 +14,7 @@ export default function Home() {
   const [status,setStatus]=useState<Status|null>(null);
   const [loading,setLoading]=useState(false);
   const [pushEnabled,setPushEnabled]=useState(false);
+  const [subscribing,setSubscribing]=useState(false);
   const [msg,setMsg]=useState("");
 
   async function check(){
@@ -27,7 +28,8 @@ export default function Home() {
   }
 
   async function enablePush(){
-    setMsg("");
+    setSubscribing(true);
+    setMsg("⏳ Memproses pendaftaran notifikasi...");
     try {
       if (!("serviceWorker" in navigator)) {
         setMsg("❌ Browser ini tidak mendukung Service Worker.");
@@ -44,6 +46,7 @@ export default function Home() {
 
       // IMPORTANT: register our own service worker explicitly.
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await reg.update().catch(() => {});
       await navigator.serviceWorker.ready;
 
       const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -57,7 +60,7 @@ export default function Home() {
         permission = await Notification.requestPermission();
       }
       if (permission !== "granted") {
-        setMsg(`❌ Izin notifikasi: ${permission}. Buka izin Notifikasi untuk situs ini di Brave.`);
+        setMsg(`❌ Izin notifikasi: ${permission}. Buka izin Notifikasi untuk situs ini di pengaturan browser.`);
         return;
       }
 
@@ -85,6 +88,8 @@ export default function Home() {
       setMsg("✅ Notifikasi aktif. Perangkat berhasil tersimpan di server.");
     } catch (e:any) {
       setMsg(`❌ ${e?.message || "Gagal mengaktifkan notifikasi."}`);
+    } finally {
+      setSubscribing(false);
     }
   }
 
@@ -111,8 +116,8 @@ export default function Home() {
 
     <div className="actions">
       <button onClick={check} disabled={loading}>{loading?"Mengecek...":"↻ Cek Presensi"}</button>
-      <button className="secondary" onClick={enablePush}>
-        {pushEnabled?"✓ Notifikasi Aktif":"🔔 Aktifkan Notifikasi"}
+      <button className="secondary" onClick={enablePush} disabled={subscribing}>
+        {pushEnabled?"✓ Notifikasi Aktif":subscribing?"⏳ Mendaftarkan...":"🔔 Aktifkan Notifikasi"}
       </button>
     </div>
 

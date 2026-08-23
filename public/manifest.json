@@ -1,0 +1,10 @@
+{
+  "name": "SAENAGA Reminder",
+  "short_name": "SAENAGA",
+  "description": "Pengingat presensi SAENAGA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f8f7",
+  "theme_color": "#166534",
+  "icons": []
+}

@@ -25,6 +25,7 @@ export type Attendance = {
   message?: string;
   source?: string;
   httpStatus?: number;
+  errorType?: "config" | "not_found" | "server" | "network" | "invalid_response";
 };
 
 const DEFAULT_BASES = [
@@ -84,7 +85,8 @@ export async function getTodayAttendance(): Promise<Attendance> {
       date: todayJakarta(),
       masuk: null,
       pulang: null,
-      message: "SAENAGA_NIP belum dikonfigurasi."
+      message: "SAENAGA_NIP belum dikonfigurasi.",
+      errorType: "config"
     };
   }
 
@@ -131,7 +133,10 @@ export async function getTodayAttendance(): Promise<Attendance> {
     date: todayJakarta(),
     masuk: null,
     pulang: null,
-    message: lastMessage
+    message: lastMessage,
+    errorType: lastMessage.includes("HTTP 404") ? "not_found" :
+      lastMessage.includes("HTTP 5") ? "server" :
+      lastMessage.includes("bukan JSON") ? "invalid_response" : "network"
   };
 }
 

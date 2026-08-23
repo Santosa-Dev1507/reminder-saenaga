@@ -1,7 +1,31 @@
-"use client";
+ "use client";
+
 import {useState} from "react";
+
 export default function RekapPage(){
- const [year,setYear]=useState("2026"),[month,setMonth]=useState("08"),[data,setData]=useState<any>(null),[loading,setLoading]=useState(false);
- async function load(){setLoading(true);try{const r=await fetch(`/api/rekap?tahun=${year}&bulan=${month}`,{cache:"no-store"});setData(await r.json())}finally{setLoading(false)}}
- function download(){window.location.href=`/api/rekap/csv?tahun=${year}&bulan=${month}`}
- return <main className="container"><section className="hero"><div className="brand">SAENAGA REMINDER</div><h1>Rekap Presensi</h1><p>Lihat dan unduh data presensi bulanan dari SAENAGA.</p></section><section className="card"><div className="rekapControls"><label>Tahun<input value={year} onChange={e=>setYear(e.target.value)} inputMode="numeric"/></label><label>Bulan<input value={month} onChange={e=>setMonth(e.target.value)} inputMode="numeric"/></label><button onClick={load} disabled={loading}>{loading?"Memuat...":"Cek Rekap"}</button><button className="secondary" onClick={download}>⬇️ Download CSV</button></div>{data&&<><div className="notice">{data.ok?`Data ditemukan: ${data.rows?.length??0} baris.`:(data.message||"Gagal mengambil rekap.")}</div>{data.ok&&<div className="tableWrap"><table><thead><tr>{Object.keys(data.rows?.[0]||{}).map(k=><th key={k}>{k}</th>)}</tr></thead><tbody>{(data.rows||[]).map((row:any,i:number)=><tr key={i}>{Object.keys(data.rows?.[0]||{}).map(k=><td key={k}>{String(row?.[k]??"")}</td>)}</tr>)}</tbody></table></div>} {data.ok&&<details><summary>Respons API (diagnostik)</summary><pre>{JSON.stringify(data,null,2)}</pre></details>}</>}</section><p style={{fontSize:13}}><a href="/">← Kembali ke Dashboard</a></p></main>}
+  const [year,setYear]=useState("2026");
+  const [month,setMonth]=useState("08");
+  const [data,setData]=useState<any>(null);
+  const [loading,setLoading]=useState(false);
+
+  async function load(){
+    setLoading(true);
+    try{
+      const r=await fetch(`/api/rekap?tahun=${year}&bulan=${month}`,{cache:"no-store"});
+      setData(await r.json());
+    }finally{setLoading(false)}
+  }
+
+  return <main style={{maxWidth:900,margin:"40px auto",padding:20,fontFamily:"Arial,sans-serif"}}>
+    <h1>Rekap Presensi SAENAGA</h1>
+    <p>Halaman diagnostik untuk mencocokkan data API dengan rekap di aplikasi SAENAGA.</p>
+    <div style={{display:"flex",gap:10,flexWrap:"wrap",margin:"20px 0"}}>
+      <input value={year} onChange={e=>setYear(e.target.value)} style={{padding:10}} placeholder="Tahun"/>
+      <input value={month} onChange={e=>setMonth(e.target.value)} style={{padding:10}} placeholder="Bulan"/>
+      <button onClick={load} disabled={loading} style={{padding:"10px 18px"}}>{loading?"Memuat...":"Cek Rekap"}</button>
+    </div>
+    {data && <pre style={{whiteSpace:"pre-wrap",background:"#f5f5f5",padding:16,borderRadius:10,overflow:"auto"}}>
+      {JSON.stringify(data,null,2)}
+    </pre>}
+  </main>
+}

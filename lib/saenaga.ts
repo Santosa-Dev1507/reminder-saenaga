@@ -25,7 +25,6 @@ export type Attendance = {
   message?: string;
   source?: string;
   httpStatus?: number;
-  errorType?: "config" | "not_found" | "server" | "network" | "invalid_response";
 };
 
 const DEFAULT_BASES = [
@@ -85,8 +84,7 @@ export async function getTodayAttendance(): Promise<Attendance> {
       date: todayJakarta(),
       masuk: null,
       pulang: null,
-      message: "SAENAGA_NIP belum dikonfigurasi.",
-      errorType: "config"
+      message: "SAENAGA_NIP belum dikonfigurasi."
     };
   }
 
@@ -110,6 +108,9 @@ export async function getTodayAttendance(): Promise<Attendance> {
         json = JSON.parse(text);
       } catch {
         lastMessage = `Respons ${new URL(base).hostname} bukan JSON (HTTP ${res.status}).`;
+
+        // A 404 from the legacy IP is expected to be a host-routing problem.
+        // Try the next known base URL.
         continue;
       }
 
@@ -133,10 +134,6 @@ export async function getTodayAttendance(): Promise<Attendance> {
     date: todayJakarta(),
     masuk: null,
     pulang: null,
-    message: lastMessage,
-    errorType: lastMessage.includes("HTTP 404") ? "not_found" :
-      lastMessage.includes("HTTP 5") ? "server" :
-      lastMessage.includes("bukan JSON") ? "invalid_response" : "network"
+    message: lastMessage
   };
 }
-

@@ -29,27 +29,71 @@ export default function Home() {
   async function enablePush(){
     setMsg("");
     try {
-      if(!("serviceWorker" in navigator)||!("PushManager" in window)){
-        setMsg("Browser ini belum mendukung Web Push."); return;
+      if (!("serviceWorker" in navigator)) {
+        setMsg("❌ Browser ini tidak mendukung Service Worker.");
+        return;
       }
-      const permission=await Notification.requestPermission();
-      if(permission!=="granted"){setMsg("Izin notifikasi belum diberikan.");return;}
-      const reg=await navigator.serviceWorker.ready;
-      const key=process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if(!key){setMsg("VAPID public key belum diatur di Vercel.");return;}
-      const sub=await reg.pushManager.subscribe({
-        userVisibleOnly:true, applicationServerKey:urlBase64ToUint8Array(key)
+      if (!("PushManager" in window)) {
+        setMsg("❌ Browser ini tidak mendukung Web Push.");
+        return;
+      }
+      if (!("Notification" in window)) {
+        setMsg("❌ Browser ini tidak mendukung notifikasi web.");
+        return;
+      }
+
+      // IMPORTANT: register our own service worker explicitly.
+      const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
+      await navigator.serviceWorker.ready;
+
+      const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!key) {
+        setMsg("❌ VAPID public key belum diatur di Vercel.");
+        return;
+      }
+
+      let permission = Notification.permission;
+      if (permission !== "granted") {
+        permission = await Notification.requestPermission();
+      }
+      if (permission !== "granted") {
+        setMsg(`❌ Izin notifikasi: ${permission}. Buka izin Notifikasi untuk situs ini di Brave.`);
+        return;
+      }
+
+      // Reuse an existing subscription when available; otherwise create one.
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(key)
+        });
+      }
+
+      const r = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({subscription: sub})
       });
-      const r=await fetch("/api/push/subscribe",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({subscription:sub})
-      });
-      if(!r.ok)throw new Error();
-      setPushEnabled(true);setMsg("✅ Notifikasi berhasil diaktifkan.");
-    } catch { setMsg("Gagal mengaktifkan notifikasi."); }
+
+      const result = await r.json().catch(() => ({}));
+      if (!r.ok || !result.ok) {
+        throw new Error(result.message || "Subscription gagal disimpan.");
+      }
+
+      setPushEnabled(true);
+      setMsg("✅ Notifikasi aktif. Perangkat berhasil tersimpan di server.");
+    } catch (e:any) {
+      setMsg(`❌ ${e?.message || "Gagal mengaktifkan notifikasi."}`);
+    }
   }
 
-  useEffect(()=>{check()},[]);
+  useEffect(()=>{
+    check();
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(()=>{});
+    }
+  },[]);
   const masuk=!!status?.masuk, pulang=!!status?.pulang;
   const todayName=useMemo(()=>new Intl.DateTimeFormat("id-ID",{weekday:"long"}).format(new Date()),[]);
 
@@ -89,7 +133,11 @@ export default function Home() {
       <div className="flow"><b>Pulang</b><span>mengikuti jadwal hari</span></div>
       <p className="muted">Server Vercel mengecek SAENAGA. Android menerima Web Push hanya jika sesi belum tercatat.</p>
     </section>
-    <p style={{marginTop:24,fontSize:13}}><a href="/rekap">📊 Buka Rekap Diagnostik</a></p>
+    <p style={{marginTop:24,fontSize:13}}>
+      <a href="/rekap">📊 Buka Rekap Diagnostik</a>
+      {" · "}
+      <a href="/api/push/status">🔔 Cek perangkat push</a>
+    </p>
   </main>
 }
 

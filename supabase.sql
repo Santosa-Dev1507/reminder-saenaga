@@ -6,6 +6,3 @@ create table if not exists public.push_subscriptions (
 );
 
 alter table public.push_subscriptions enable row level security;
-
--- Intentionally no public policies.
--- Writes happen through the server-side service role only.
